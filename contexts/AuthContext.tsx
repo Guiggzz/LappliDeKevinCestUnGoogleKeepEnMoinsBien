@@ -1,4 +1,4 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 import { useRouter, useSegments } from "expo-router";
 import {
     createContext,
@@ -21,6 +21,9 @@ type AuthContextType = {
     userToken: string | null;
     user: User | null;
 };
+
+const SECURE_TOKEN_KEY = "secure_user_token";
+const SECURE_USER_DATA_KEY = "secure_user_data";
 
 const AuthContext = createContext<AuthContextType>({
     signIn: async () => { },
@@ -56,8 +59,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         const loadToken = async () => {
             try {
-                const token = await AsyncStorage.getItem("userToken");
-                const userData = await AsyncStorage.getItem("userData");
+                // Utilisation de SecureStore au lieu d'AsyncStorage
+                const token = await SecureStore.getItemAsync(SECURE_TOKEN_KEY);
+                const userData = await SecureStore.getItemAsync(SECURE_USER_DATA_KEY);
 
                 setUserToken(token);
 
@@ -66,12 +70,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         const userInfo = JSON.parse(userData);
                         setUser(userInfo);
                     } catch (error) {
-                        console.error(error);
+                        console.error("Erreur de parsing des données utilisateur:", error);
                         await signOut();
                     }
                 }
             } catch (error) {
-                console.error(error);
+                console.error("Erreur lors du chargement des données:", error);
             } finally {
                 setIsLoading(false);
             }
@@ -82,21 +86,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const signIn = async (token: string, userData: User) => {
         try {
-            await AsyncStorage.setItem("userToken", token);
-            await AsyncStorage.setItem("userData", JSON.stringify(userData));
+            // Stockage sécurisé des informations
+            await SecureStore.setItemAsync(SECURE_TOKEN_KEY, token);
+            await SecureStore.setItemAsync(SECURE_USER_DATA_KEY, JSON.stringify(userData));
             setUserToken(token);
             setUser(userData);
         } catch (error) {
-            console.error(error);
+            console.error("Erreur lors de la connexion:", error);
         }
     };
 
     const signOut = async () => {
-        await AsyncStorage.removeItem("userToken");
-        await AsyncStorage.removeItem("userData");
-        setUserToken(null);
-        setUser(null);
-        setIsLoading(false);
+        try {
+            // Suppression des informations stockées
+            await SecureStore.deleteItemAsync(SECURE_TOKEN_KEY);
+            await SecureStore.deleteItemAsync(SECURE_USER_DATA_KEY);
+            setUserToken(null);
+            setUser(null);
+        } catch (error) {
+            console.error("Erreur lors de la déconnexion:", error);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
