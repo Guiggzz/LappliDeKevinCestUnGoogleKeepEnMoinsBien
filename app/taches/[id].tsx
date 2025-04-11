@@ -7,29 +7,29 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { router, useLocalSearchParams } from "expo-router";
 
-const apiUrl = "https://keep.kevindupas.com/api/notes";
+const apiUrl = "https://keep.kevindupas.com/api/tasks";
 
-interface Note {
+interface Taches {
     id: string;
     title: string;
     content: string;
     categories?: { id: string; name: string; }[];
 }
-export default function NoteDetails() {
+export default function TachesDetails() {
     const { id } = useLocalSearchParams();
     const { userToken } = useAuth();
 
-    const [note, setNote] = useState<Note | null>(null);
+    const [Taches, setTaches] = useState<Taches | null>(null);
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
     const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
-        loadNote();
+        loadTaches();
     }, []);
 
-    const loadNote = async () => {
+    const loadTaches = async () => {
         if (!userToken || !id) return;
 
         try {
@@ -43,11 +43,11 @@ export default function NoteDetails() {
             if (!response.ok) throw new Error("Erreur de chargement");
 
             const { data } = await response.json();
-            setNote(data);
+            setTaches(data);
             setTitle(data.title);
             setContent(data.content.replace(/<[^>]+>/g, ''));
         } catch (error) {
-            Alert.alert("Erreur", "Impossible de charger la note");
+            Alert.alert("Erreur", "Impossible de charger la Taches");
         } finally {
             setLoading(false);
         }
@@ -72,11 +72,11 @@ export default function NoteDetails() {
 
             if (!response.ok) throw new Error("Erreur de sauvegarde");
 
-            Alert.alert("Succès", "Note mise à jour", [
+            Alert.alert("Succès", "Taches mise à jour", [
                 { text: "OK", onPress: () => router.back() }
             ]);
         } catch (error) {
-            Alert.alert("Erreur", "Impossible de sauvegarder la note");
+            Alert.alert("Erreur", "Impossible de sauvegarder la tache");
         } finally {
             setIsSaving(false);
         }
@@ -85,7 +85,7 @@ export default function NoteDetails() {
     const handleDelete = async () => {
         Alert.alert(
             "Confirmation",
-            "Voulez-vous vraiment supprimer cette note ?",
+            "Voulez-vous vraiment supprimer cette Taches ?",
             [
                 { text: "Annuler", style: "cancel" },
                 {
@@ -101,7 +101,7 @@ export default function NoteDetails() {
                                 }
                             });
 
-                            Alert.alert("Note supprimée", "", [
+                            Alert.alert("Taches supprimée", "", [
                                 { text: "OK", onPress: () => router.back() }
                             ]);
                         } catch (error) {
@@ -118,7 +118,7 @@ export default function NoteDetails() {
             <LinearGradient colors={["#0f2027", "#203a43", "#2c5364"]} style={tw`flex-1`}>
                 <SafeAreaView style={tw`flex-1 justify-center items-center`}>
                     <ActivityIndicator size="large" color="#ffffff" />
-                    <Text style={tw`text-white/70 mt-4`}>Chargement de la note...</Text>
+                    <Text style={tw`text-white/70 mt-4`}>Chargement de la Taches...</Text>
                 </SafeAreaView>
             </LinearGradient>
         );
@@ -134,7 +134,7 @@ export default function NoteDetails() {
                     >
                         <Ionicons name="arrow-back" size={24} color="white" />
                     </TouchableOpacity>
-                    <Text style={tw`text-white text-xl font-bold`}>Modifier la note</Text>
+                    <Text style={tw`text-white text-xl font-bold`}>Modifier la Taches</Text>
                     <TouchableOpacity
                         onPress={handleDelete}
                         style={tw`p-2.5 bg-red-500/70 rounded-full shadow-md`}
@@ -150,7 +150,7 @@ export default function NoteDetails() {
                             style={tw`bg-white/20 text-white p-4 rounded-lg mb-6 shadow-sm border border-white/10`}
                             value={title}
                             onChangeText={setTitle}
-                            placeholder="Titre de la note"
+                            placeholder="Titre de la Taches"
                             placeholderTextColor="rgba(255,255,255,0.5)"
                         />
 
@@ -159,17 +159,17 @@ export default function NoteDetails() {
                             style={tw`bg-white/20 text-white p-4 rounded-lg min-h-64 shadow-sm border border-white/10`}
                             value={content}
                             onChangeText={setContent}
-                            placeholder="Contenu de la note"
+                            placeholder="Contenu de la Taches"
                             placeholderTextColor="rgba(255,255,255,0.5)"
                             multiline
                             textAlignVertical="top"
                         />
 
-                        {(note?.categories ?? []).length > 0 && (
+                        {(Taches?.categories ?? []).length > 0 && (
                             <View style={tw`mt-6`}>
                                 <Text style={tw`text-white text-base mb-2 font-medium`}>Catégories</Text>
                                 <View style={tw`flex-row flex-wrap gap-2`}>
-                                    {note?.categories?.map(cat => (
+                                    {Taches?.categories?.map(cat => (
                                         <View key={cat.id} style={tw`bg-blue-500/50 px-3 py-1.5 rounded-full shadow-sm`}>
                                             <Text style={tw`text-white text-sm`}>{cat.name}</Text>
                                         </View>

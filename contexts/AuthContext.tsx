@@ -59,7 +59,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         const loadToken = async () => {
             try {
-                // Utilisation de SecureStore au lieu d'AsyncStorage
                 const token = await SecureStore.getItemAsync(SECURE_TOKEN_KEY);
                 const userData = await SecureStore.getItemAsync(SECURE_USER_DATA_KEY);
 
@@ -68,7 +67,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (userData) {
                     try {
                         const userInfo = JSON.parse(userData);
-                        setUser(userInfo);
+                        if (userInfo && userInfo.id && userInfo.email) {
+                            setUser(userInfo);
+                        }
+                        else {
+                            console.error("Données utilisateur invalides:", userInfo);
+                            await signOut();
+                        }
                     } catch (error) {
                         console.error("Erreur de parsing des données utilisateur:", error);
                         await signOut();
@@ -98,7 +103,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const signOut = async () => {
         try {
-            // Suppression des informations stockées
             await SecureStore.deleteItemAsync(SECURE_TOKEN_KEY);
             await SecureStore.deleteItemAsync(SECURE_USER_DATA_KEY);
             setUserToken(null);
