@@ -99,11 +99,6 @@ export default function Create() {
             return;
         }
 
-        if (!selectedNote) {
-            Alert.alert("Erreur", "Veuillez sélectionner une note associée.");
-            return;
-        }
-
         setLoading(true);
         try {
             const response = await fetch(apiCreateTaches, {

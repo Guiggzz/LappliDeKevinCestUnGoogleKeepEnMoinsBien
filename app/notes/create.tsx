@@ -6,14 +6,26 @@ import { LinearGradient } from "expo-linear-gradient";
 import tw from "twrnc";
 import { useAuth } from "@/contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
-import Checkbox from "expo-checkbox";
 
 const apiCategories = "https://keep.kevindupas.com/api/categories";
 const apiCreateNote = "https://keep.kevindupas.com/api/notes";
 
+// Couleurs prédéfinies pour les nouvelles catégories
+const CATEGORY_COLORS = [
+    "#9C27B0", // Violet
+    "#2196F3", // Bleu
+    "#4CAF50", // Vert
+    "#FF9800", // Orange
+    "#E91E63", // Rose
+    "#607D8B", // Bleu-gris
+    "#F44336", // Rouge
+    "#009688"  // Sarcelle
+];
+
 interface Category {
     id: number;
     name: string;
+    color?: string;
 }
 
 export default function Create() {
@@ -25,6 +37,8 @@ export default function Create() {
     const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
     const [dropdownVisible, setDropdownVisible] = useState(false);
     const [categoriesLoading, setCategoriesLoading] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState("");
+    const [isCreatingCategory, setIsCreatingCategory] = useState(false);
 
     useEffect(() => {
         if (dropdownVisible) fetchCategories();
@@ -58,6 +72,44 @@ export default function Create() {
         setSelectedCategories(prev =>
             prev.includes(id) ? prev.filter(catId => catId !== id) : [...prev, id]
         );
+    };
+
+    const createNewCategory = async () => {
+        if (!newCategoryName.trim()) {
+            Alert.alert("Erreur", "Le nom de la catégorie ne peut pas être vide");
+            return;
+        }
+
+        setIsCreatingCategory(true);
+        try {
+            // Sélection aléatoire d'une couleur dans notre palette
+            const randomColor = CATEGORY_COLORS[Math.floor(Math.random() * CATEGORY_COLORS.length)];
+
+            const response = await fetch(apiCategories, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${userToken}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    name: newCategoryName,
+                    color: randomColor
+                })
+            });
+
+            if (!response.ok) throw new Error("Erreur de création de catégorie");
+
+            const { data } = await response.json();
+            setCategories(prev => [...prev, data]);
+            setSelectedCategories(prev => [...prev, data.id]);
+            setNewCategoryName("");
+            Alert.alert("Succès", "Catégorie créée avec succès");
+        } catch (error) {
+            console.error("Error creating category:", error);
+            Alert.alert("Erreur", "Impossible de créer la catégorie");
+        } finally {
+            setIsCreatingCategory(false);
+        }
     };
 
     const createNote = async () => {
@@ -146,7 +198,7 @@ export default function Create() {
                                 <Text style={tw`text-blue-200 text-base mb-2 font-medium`}>Catégories</Text>
                                 <TouchableOpacity
                                     onPress={() => setDropdownVisible(!dropdownVisible)}
-                                    style={tw`bg-white/10 p-4 rounded-lg flex-row items-center justify-between border border-white/20`}
+                                    style={tw`bg-white/10 p-4 rounded-lg flex-row items-center justify-between border border-white/20 mb-2`}
                                 >
                                     <Text style={tw`text-white`}>
                                         {selectedCategories.length > 0
@@ -157,35 +209,86 @@ export default function Create() {
                                 </TouchableOpacity>
 
                                 {dropdownVisible && (
-                                    <View style={tw`mt-2 bg-white/10 rounded-lg p-3 max-h-40 border border-white/10`}>
-                                        {categoriesLoading ? (
-                                            <View style={tw`py-4 items-center`}>
-                                                <ActivityIndicator color="#ffffff" />
-                                                <Text style={tw`text-white/80 text-sm mt-2`}>Chargement des catégories...</Text>
-                                            </View>
-                                        ) : categories.length === 0 ? (
-                                            <View style={tw`py-4 items-center`}>
-                                                <Text style={tw`text-white/80 text-base`}>Aucune catégorie disponible</Text>
-                                            </View>
-                                        ) : (
-                                            <FlatList
-                                                data={categories}
-                                                keyExtractor={(item) => item.id.toString()}
-                                                renderItem={({ item }) => (
-                                                    <TouchableOpacity
-                                                        style={tw`flex-row items-center p-3 border-b border-white/10`}
-                                                        onPress={() => toggleCategorySelection(item.id)}
-                                                    >
-                                                        <View style={tw`h-5 w-5 mr-3 bg-white/20 rounded justify-center items-center`}>
-                                                            {selectedCategories.includes(item.id) && (
-                                                                <Ionicons name="checkmark" size={16} color="#8cf1b4" />
-                                                            )}
-                                                        </View>
-                                                        <Text style={tw`text-white text-base`}>{item.name}</Text>
-                                                    </TouchableOpacity>
-                                                )}
+                                    <View style={tw`mb-4`}>
+                                        <View style={tw`bg-white/10 rounded-lg p-3 max-h-40 border border-white/10 mb-2`}>
+                                            {categoriesLoading ? (
+                                                <View style={tw`py-4 items-center`}>
+                                                    <ActivityIndicator color="#ffffff" />
+                                                    <Text style={tw`text-white/80 text-sm mt-2`}>Chargement des catégories...</Text>
+                                                </View>
+                                            ) : categories.length === 0 ? (
+                                                <View style={tw`py-4 items-center`}>
+                                                    <Text style={tw`text-white/80 text-base`}>Aucune catégorie disponible</Text>
+                                                </View>
+                                            ) : (
+                                                <FlatList
+                                                    data={categories}
+                                                    keyExtractor={(item) => item.id.toString()}
+                                                    renderItem={({ item }) => (
+                                                        <TouchableOpacity
+                                                            style={tw`flex-row items-center p-3 border-b border-white/10`}
+                                                            onPress={() => toggleCategorySelection(item.id)}
+                                                        >
+                                                            <View
+                                                                style={{ backgroundColor: item.color || '#2196F3', width: 20, height: 20, marginRight: 12, borderRadius: 4, justifyContent: 'center', alignItems: 'center' }}
+                                                            >
+                                                                {selectedCategories.includes(item.id) && (
+                                                                    <Ionicons name="checkmark" size={16} color="white" />
+                                                                )}
+                                                            </View>
+                                                            <Text style={tw`text-white text-base`}>{item.name}</Text>
+                                                        </TouchableOpacity>
+                                                    )}
+                                                />
+                                            )}
+                                        </View>
+
+                                        <View style={tw`flex-row items-center mt-2`}>
+                                            <TextInput
+                                                style={tw`flex-1 bg-white/10 text-white p-3 rounded-l-lg border-r-0 border border-white/10`}
+                                                value={newCategoryName}
+                                                onChangeText={setNewCategoryName}
+                                                placeholder="Nouvelle catégorie"
+                                                placeholderTextColor="rgba(255,255,255,0.5)"
                                             />
-                                        )}
+                                            <TouchableOpacity
+                                                onPress={createNewCategory}
+                                                disabled={isCreatingCategory || !newCategoryName.trim()}
+                                                style={tw`bg-blue-500 p-3 rounded-r-lg ${(!newCategoryName.trim() || isCreatingCategory) ? 'opacity-60' : ''}`}
+                                            >
+                                                {isCreatingCategory ? (
+                                                    <ActivityIndicator size="small" color="white" />
+                                                ) : (
+                                                    <Ionicons name="add" size={24} color="white" />
+                                                )}
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                )}
+
+                                {selectedCategories.length > 0 && (
+                                    <View style={tw`flex-row flex-wrap gap-2 mt-2`}>
+                                        {selectedCategories.map(catId => {
+                                            const category = categories.find(c => c.id === catId);
+                                            return category ? (
+                                                <View key={catId}
+                                                    style={{
+                                                        backgroundColor: category.color ? `${category.color}80` : '#2196F380',
+                                                        paddingHorizontal: 12,
+                                                        paddingVertical: 6,
+                                                        borderRadius: 20,
+                                                        flexDirection: 'row',
+                                                        alignItems: 'center',
+                                                        marginRight: 8,
+                                                        marginBottom: 8
+                                                    }}>
+                                                    <Text style={tw`text-white text-sm mr-1`}>{category.name}</Text>
+                                                    <TouchableOpacity onPress={() => toggleCategorySelection(catId)}>
+                                                        <Ionicons name="close-circle" size={16} color="white" />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            ) : null;
+                                        })}
                                     </View>
                                 )}
                             </View>

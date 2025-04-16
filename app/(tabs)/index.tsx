@@ -10,6 +10,7 @@ import { router } from "expo-router";
 interface Category {
   id: number;
   name: string;
+  color: string;
 }
 
 interface Notes {
@@ -145,7 +146,7 @@ export default function Index() {
             )}
             renderItem={({ item }) => (
               <TouchableOpacity
-                onPress={() => router.push(`/taches/${item.id}`)}
+                onPress={() => router.push(`/notes/${item.id}`)}
                 style={tw`mb-4 overflow-hidden rounded-xl shadow-lg`}
               >
                 <LinearGradient
@@ -159,9 +160,6 @@ export default function Index() {
                   <Text style={tw`text-blue-100 text-base mb-3`}>{item.content.replace(/<[^>]+>/g, '')}</Text>
 
                   <View style={tw`flex-row justify-between items-center mb-2`}>
-                    <View style={tw`bg-blue-500/30 px-3 py-1 rounded-full`}>
-                      <Text style={tw`text-blue-100 text-xs font-medium`}>ID: {item.id}</Text>
-                    </View>
                     <Text style={tw`text-blue-200 text-sm`}>
                       {new Date(item.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                     </Text>
@@ -171,7 +169,17 @@ export default function Index() {
                     <View style={tw`mt-2`}>
                       <View style={tw`flex-row flex-wrap gap-2 mt-1`}>
                         {item.categories.map((category) => (
-                          <View key={category.id} style={tw`bg-blue-500/50 px-2 py-1 rounded-full`}>
+                          <View key={category.id}
+                            style={{
+                              backgroundColor: category.color ? `${category.color}80` : '#2196F380',
+                              paddingHorizontal: 12,
+                              paddingVertical: 6,
+                              borderRadius: 20,
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              marginRight: 8,
+                              marginBottom: 8
+                            }}>
                             <Text style={tw`text-white text-xs`}>
                               {category.name}
                             </Text>

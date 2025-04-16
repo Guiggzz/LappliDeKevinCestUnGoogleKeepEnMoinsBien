@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, ScrollView, Switch } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import tw from "twrnc";
@@ -9,27 +9,47 @@ import { router, useLocalSearchParams } from "expo-router";
 
 const apiUrl = "https://keep.kevindupas.com/api/tasks";
 
-interface Taches {
-    id: string;
-    title: string;
-    content: string;
-    categories?: { id: string; name: string; }[];
+interface Subtask {
+    id: number;
+    description: string;
+    is_completed: boolean;
 }
-export default function TachesDetails() {
+
+interface Note {
+    id: number;
+    title: string;
+}
+
+interface Task {
+    id: number;
+    description: string;
+    is_completed: boolean;
+    user_id: number;
+    note_id: number;
+    subtasks: Subtask[];
+    created_at: string;
+    updated_at: string;
+    note: Note;
+}
+
+export default function TacheDetails() {
     const { id } = useLocalSearchParams();
     const { userToken } = useAuth();
 
-    const [Taches, setTaches] = useState<Taches | null>(null);
-    const [title, setTitle] = useState("");
-    const [content, setContent] = useState("");
+    const [task, setTask] = useState<Task | null>(null);
+    const [description, setDescription] = useState("");
+    const [isCompleted, setIsCompleted] = useState(false);
+    const [noteTitle, setNoteTitle] = useState("");
+    const [subtasks, setSubtasks] = useState<Subtask[]>([]);
+    const [newSubtask, setNewSubtask] = useState("");
     const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
-        loadTaches();
+        loadTask();
     }, []);
 
-    const loadTaches = async () => {
+    const loadTask = async () => {
         if (!userToken || !id) return;
 
         try {
@@ -43,40 +63,51 @@ export default function TachesDetails() {
             if (!response.ok) throw new Error("Erreur de chargement");
 
             const { data } = await response.json();
-            setTaches(data);
-            setTitle(data.title);
-            setContent(data.content.replace(/<[^>]+>/g, ''));
+            setTask(data);
+            setDescription(data.description);
+            setIsCompleted(data.is_completed);
+            setNoteTitle(data.note?.title || "");
+            setSubtasks(data.subtasks || []);
         } catch (error) {
-            Alert.alert("Erreur", "Impossible de charger la Taches");
+            Alert.alert("Erreur", "Impossible de charger la tâche");
         } finally {
             setLoading(false);
         }
     };
 
     const handleSave = async () => {
-        if (!title.trim()) {
-            Alert.alert("Erreur", "Le titre ne peut pas être vide");
+        if (!description.trim()) {
+            Alert.alert("Erreur", "La description ne peut pas être vide");
             return;
         }
 
         setIsSaving(true);
         try {
+            const taskData = {
+                description,
+                is_completed: isCompleted,
+                note: {
+                    title: noteTitle
+                },
+                subtasks: subtasks
+            };
+
             const response = await fetch(`${apiUrl}/${id}`, {
                 method: "PUT",
                 headers: {
                     "Authorization": `Bearer ${userToken}`,
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({ title, content })
+                body: JSON.stringify(taskData)
             });
 
             if (!response.ok) throw new Error("Erreur de sauvegarde");
 
-            Alert.alert("Succès", "Taches mise à jour", [
+            Alert.alert("Succès", "Tâche mise à jour", [
                 { text: "OK", onPress: () => router.back() }
             ]);
         } catch (error) {
-            Alert.alert("Erreur", "Impossible de sauvegarder la tache");
+            Alert.alert("Erreur", "Impossible de sauvegarder la tâche");
         } finally {
             setIsSaving(false);
         }
@@ -85,7 +116,7 @@ export default function TachesDetails() {
     const handleDelete = async () => {
         Alert.alert(
             "Confirmation",
-            "Voulez-vous vraiment supprimer cette Taches ?",
+            "Voulez-vous vraiment supprimer cette tâche ?",
             [
                 { text: "Annuler", style: "cancel" },
                 {
@@ -93,7 +124,7 @@ export default function TachesDetails() {
                     style: "destructive",
                     onPress: async () => {
                         try {
-                            await fetch(`${apiUrl}/${id}`, {
+                            const response = await fetch(`${apiUrl}/${id}`, {
                                 method: "DELETE",
                                 headers: {
                                     "Authorization": `Bearer ${userToken}`,
@@ -101,7 +132,9 @@ export default function TachesDetails() {
                                 }
                             });
 
-                            Alert.alert("Taches supprimée", "", [
+                            if (!response.ok) throw new Error("Erreur de suppression");
+
+                            Alert.alert("Tâche supprimée", "", [
                                 { text: "OK", onPress: () => router.back() }
                             ]);
                         } catch (error) {
@@ -113,12 +146,37 @@ export default function TachesDetails() {
         );
     };
 
+    const addSubtask = () => {
+        if (!newSubtask.trim()) return;
+
+        const newSubtaskObj: Subtask = {
+            id: Date.now(), // Temporary ID for frontend use
+            description: newSubtask,
+            is_completed: false
+        };
+
+        setSubtasks([...subtasks, newSubtaskObj]);
+        setNewSubtask("");
+    };
+
+    const toggleSubtaskCompletion = (subtaskId: number) => {
+        setSubtasks(subtasks.map(subtask =>
+            subtask.id === subtaskId
+                ? { ...subtask, is_completed: !subtask.is_completed }
+                : subtask
+        ));
+    };
+
+    const removeSubtask = (subtaskId: number) => {
+        setSubtasks(subtasks.filter(subtask => subtask.id !== subtaskId));
+    };
+
     if (loading) {
         return (
             <LinearGradient colors={["#0f2027", "#203a43", "#2c5364"]} style={tw`flex-1`}>
                 <SafeAreaView style={tw`flex-1 justify-center items-center`}>
                     <ActivityIndicator size="large" color="#ffffff" />
-                    <Text style={tw`text-white/70 mt-4`}>Chargement de la Taches...</Text>
+                    <Text style={tw`text-white/70 mt-4`}>Chargement de la tâche...</Text>
                 </SafeAreaView>
             </LinearGradient>
         );
@@ -134,7 +192,7 @@ export default function TachesDetails() {
                     >
                         <Ionicons name="arrow-back" size={24} color="white" />
                     </TouchableOpacity>
-                    <Text style={tw`text-white text-xl font-bold`}>Modifier la Taches</Text>
+                    <Text style={tw`text-white text-xl font-bold`}>Modifier la tâche</Text>
                     <TouchableOpacity
                         onPress={handleDelete}
                         style={tw`p-2.5 bg-red-500/70 rounded-full shadow-md`}
@@ -145,36 +203,88 @@ export default function TachesDetails() {
 
                 <ScrollView style={tw`flex-1`}>
                     <View style={tw`bg-white/10 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/10 mb-4`}>
-                        <Text style={tw`text-white text-base mb-2 font-medium`}>Titre</Text>
+                        {/* Note Title */}
+                        <Text style={tw`text-white text-base mb-2 font-medium`}>Titre de la note</Text>
                         <TextInput
                             style={tw`bg-white/20 text-white p-4 rounded-lg mb-6 shadow-sm border border-white/10`}
-                            value={title}
-                            onChangeText={setTitle}
-                            placeholder="Titre de la Taches"
+                            value={noteTitle}
+                            onChangeText={setNoteTitle}
+                            placeholder="Titre de la note"
                             placeholderTextColor="rgba(255,255,255,0.5)"
                         />
 
-                        <Text style={tw`text-white text-base mb-2 font-medium`}>Contenu</Text>
+                        {/* Task Description */}
+                        <Text style={tw`text-white text-base mb-2 font-medium`}>Description</Text>
                         <TextInput
-                            style={tw`bg-white/20 text-white p-4 rounded-lg min-h-64 shadow-sm border border-white/10`}
-                            value={content}
-                            onChangeText={setContent}
-                            placeholder="Contenu de la Taches"
+                            style={tw`bg-white/20 text-white p-4 rounded-lg mb-6 shadow-sm border border-white/10`}
+                            value={description}
+                            onChangeText={setDescription}
+                            placeholder="Description de la tâche"
                             placeholderTextColor="rgba(255,255,255,0.5)"
                             multiline
+                            numberOfLines={3}
                             textAlignVertical="top"
                         />
 
-                        {(Taches?.categories ?? []).length > 0 && (
-                            <View style={tw`mt-6`}>
-                                <Text style={tw`text-white text-base mb-2 font-medium`}>Catégories</Text>
-                                <View style={tw`flex-row flex-wrap gap-2`}>
-                                    {Taches?.categories?.map(cat => (
-                                        <View key={cat.id} style={tw`bg-blue-500/50 px-3 py-1.5 rounded-full shadow-sm`}>
-                                            <Text style={tw`text-white text-sm`}>{cat.name}</Text>
-                                        </View>
-                                    )) ?? []}
-                                </View>
+                        {/* Completion Status */}
+                        <View style={tw`flex-row items-center justify-between mb-6 bg-white/10 p-4 rounded-lg`}>
+                            <Text style={tw`text-white text-base font-medium`}>Tâche terminée</Text>
+                            <Switch
+                                value={isCompleted}
+                                onValueChange={setIsCompleted}
+                                trackColor={{ false: "#767577", true: "#4facfe" }}
+                                thumbColor={isCompleted ? "#ffffff" : "#f4f3f4"}
+                            />
+                        </View>
+
+                        {/* Subtasks Section */}
+                        <Text style={tw`text-white text-lg mb-4 font-bold`}>Sous-tâches</Text>
+
+                        {/* Add New Subtask */}
+                        <View style={tw`flex-row mb-4`}>
+                            <TextInput
+                                style={tw`flex-1 bg-white/20 text-white p-4 rounded-l-lg shadow-sm border border-white/10`}
+                                value={newSubtask}
+                                onChangeText={setNewSubtask}
+                                placeholder="Nouvelle sous-tâche"
+                                placeholderTextColor="rgba(255,255,255,0.5)"
+                            />
+                            <TouchableOpacity
+                                onPress={addSubtask}
+                                style={tw`bg-blue-500 justify-center items-center px-4 rounded-r-lg`}
+                            >
+                                <Ionicons name="add" size={24} color="white" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Subtasks List */}
+                        {subtasks.length > 0 ? (
+                            <View style={tw`bg-white/5 rounded-lg p-4 border border-white/5`}>
+                                {subtasks.map((subtask, index) => (
+                                    <View key={subtask.id} style={tw`flex-row items-center justify-between mb-3 ${index !== subtasks.length - 1 ? 'border-b border-white/10 pb-3' : ''}`}>
+                                        <TouchableOpacity
+                                            onPress={() => toggleSubtaskCompletion(subtask.id)}
+                                            style={tw`flex-row items-center flex-1 mr-2`}
+                                        >
+                                            <Ionicons
+                                                name={subtask.is_completed ? "checkmark-circle" : "ellipse-outline"}
+                                                size={24}
+                                                color={subtask.is_completed ? "#8cf1b4" : "#a0c4ff"}
+                                            />
+                                            <Text style={tw`text-white ml-3 ${subtask.is_completed ? 'line-through opacity-60' : ''}`}>
+                                                {subtask.description}
+                                            </Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity onPress={() => removeSubtask(subtask.id)}>
+                                            <Ionicons name="close-circle" size={24} color="#ff6b6b" />
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View>
+                        ) : (
+                            <View style={tw`bg-white/5 rounded-lg p-6 items-center border border-white/5`}>
+                                <Ionicons name="list" size={40} color="rgba(255,255,255,0.2)" />
+                                <Text style={tw`text-white/60 mt-2 text-center`}>Aucune sous-tâche</Text>
                             </View>
                         )}
                     </View>
