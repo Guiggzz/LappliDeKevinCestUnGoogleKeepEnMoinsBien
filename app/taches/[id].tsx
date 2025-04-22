@@ -6,8 +6,7 @@ import tw from "twrnc";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { router, useLocalSearchParams } from "expo-router";
-
-const apiUrl = "https://keep.kevindupas.com/api/tasks";
+import { API } from "@/constants/config";
 
 interface Subtask {
     id: number;
@@ -53,7 +52,7 @@ export default function TacheDetails() {
         if (!userToken || !id) return;
 
         try {
-            const response = await fetch(`${apiUrl}/${id}`, {
+            const response = await fetch(`${API.TASKS}/${id}`, {
                 headers: {
                     "Authorization": `Bearer ${userToken}`,
                     "Content-Type": "application/json"
@@ -92,7 +91,7 @@ export default function TacheDetails() {
                 subtasks: subtasks
             };
 
-            const response = await fetch(`${apiUrl}/${id}`, {
+            const response = await fetch(`${API.TASKS}/${id}`, {
                 method: "PUT",
                 headers: {
                     "Authorization": `Bearer ${userToken}`,
@@ -124,7 +123,7 @@ export default function TacheDetails() {
                     style: "destructive",
                     onPress: async () => {
                         try {
-                            const response = await fetch(`${apiUrl}/${id}`, {
+                            const response = await fetch(`${API.TASKS}/${id}`, {
                                 method: "DELETE",
                                 headers: {
                                     "Authorization": `Bearer ${userToken}`,

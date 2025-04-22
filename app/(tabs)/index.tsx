@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, ActivityIndicator, FlatList, Alert, TextInput } from "react-native";
+import { View, Text, TouchableOpacity, ActivityIndicator, FlatList, Alert, TextInput, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import tw from "twrnc";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { router } from "expo-router";
+import { API } from "@/constants/config";
 
 interface Category {
   id: number;
@@ -21,7 +22,6 @@ interface Notes {
   created_at: Date;
 }
 
-const apiUrl = "https://keep.kevindupas.com/api/notes";
 
 export default function Index() {
   const [notes, setNotes] = useState<Notes[]>([]);
@@ -29,10 +29,22 @@ export default function Index() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [filteredNotes, setFilteredNotes] = useState<Notes[]>([]);
+  const [allCategories, setAllCategories] = useState<Category[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
 
   // Initialize filteredNotes whenever notes change
   useEffect(() => {
     setFilteredNotes(notes);
+
+    // Extract all unique categories from notes
+    if (notes.length > 0) {
+      const categories = notes
+        .flatMap(note => note.categories || [])
+        .filter((category, index, self) =>
+          index === self.findIndex((c) => c.id === category.id)
+        );
+      setAllCategories(categories);
+    }
   }, [notes]);
 
   const fetchNotes = async () => {
@@ -44,10 +56,11 @@ export default function Index() {
     }
 
     if (loading) return;
+    console.log("apiCreateNote : ", API.NOTES);
 
     setLoading(true);
     try {
-      const response = await fetch(apiUrl, {
+      const response = await fetch(API.NOTES, {
         headers: {
           "Authorization": `Bearer ${userToken}`,
           "Content-Type": "application/json"
@@ -56,7 +69,7 @@ export default function Index() {
       const result = await response.json();
       setNotes(result.data || []);
     } catch (error) {
-      Alert.alert("Erreur", "Impossible de récupérer les rappels.");
+      Alert.alert("Erreur", "Impossible de récupérer les notes.");
     } finally {
       setLoading(false);
     }
@@ -66,17 +79,52 @@ export default function Index() {
     router.push("/notes/create");
   };
 
+  // Filter notes by both search text and selected categories
+  const filterNotes = () => {
+    let filtered = notes;
+
+    // Filter by search text
+    if (search) {
+      filtered = filtered.filter(note =>
+        note.title.toLowerCase().includes(search.toLowerCase()) ||
+        note.content.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    // Filter by selected categories
+    if (selectedCategories.length > 0) {
+      filtered = filtered.filter(note =>
+        note.categories && note.categories.some(category =>
+          selectedCategories.includes(category.id)
+        )
+      );
+    }
+
+    setFilteredNotes(filtered);
+  };
+
+  // Update filters when search text or selected categories change
+  useEffect(() => {
+    filterNotes();
+  }, [search, selectedCategories, notes]);
+
   const handleSearch = (text: string) => {
     setSearch(text);
-    if (text) {
-      const filtered = notes.filter(note =>
-        note.title.toLowerCase().includes(text.toLowerCase()) ||
-        note.content.toLowerCase().includes(text.toLowerCase())
-      );
-      setFilteredNotes(filtered);
-    } else {
-      setFilteredNotes(notes);
-    }
+  };
+
+  const toggleCategoryFilter = (categoryId: number) => {
+    setSelectedCategories(prev => {
+      if (prev.includes(categoryId)) {
+        return prev.filter(id => id !== categoryId);
+      } else {
+        return [...prev, categoryId];
+      }
+    });
+  };
+
+  const clearFilters = () => {
+    setSearch("");
+    setSelectedCategories([]);
   };
 
   return (
@@ -117,6 +165,8 @@ export default function Index() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Search input */}
         <TextInput
           placeholder="Rechercher..."
           placeholderTextColor="#ffffff"
@@ -125,6 +175,49 @@ export default function Index() {
           style={tw`bg-white/10 text-white rounded-full px-4 py-2 mb-2`}
         />
 
+        {/* Category filters */}
+        {allCategories.length > 0 && (
+          <View style={tw`mb-4`}>
+            <View style={tw`flex-row justify-between items-center mb-2`}>
+              <Text style={tw`text-white text-base`}>Filtrer par catégorie:</Text>
+              {selectedCategories.length > 0 && (
+                <TouchableOpacity onPress={clearFilters}>
+                  <Text style={tw`text-blue-300 text-sm`}>Effacer les filtres</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={tw`py-1`}
+            >
+              {allCategories.map((category) => (
+                <TouchableOpacity
+                  key={category.id}
+                  onPress={() => toggleCategoryFilter(category.id)}
+                  style={{
+                    backgroundColor: selectedCategories.includes(category.id)
+                      ? `${category.color}`
+                      : `${category.color}80`,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 20,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginRight: 8,
+                    borderWidth: selectedCategories.includes(category.id) ? 2 : 0,
+                    borderColor: 'white',
+                  }}
+                >
+                  <Text style={tw`text-white text-xs`}>
+                    {category.name}
+                    {selectedCategories.includes(category.id) && " ✓"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {loading ? (
           <View style={tw`flex-1 justify-center items-center`}>
@@ -140,8 +233,18 @@ export default function Index() {
             ListEmptyComponent={() => (
               <View style={tw`flex-1 justify-center items-center py-20`}>
                 <Text style={tw`text-white/80 text-lg`}>
-                  {search ? "Aucune note trouvée" : "Aucune note disponible"}
+                  {search || selectedCategories.length > 0
+                    ? "Aucune note correspondant aux filtres"
+                    : "Aucune note disponible"}
                 </Text>
+                {(search || selectedCategories.length > 0) && (
+                  <TouchableOpacity
+                    onPress={clearFilters}
+                    style={tw`mt-4 bg-blue-500/50 px-6 py-2 rounded-full`}
+                  >
+                    <Text style={tw`text-white`}>Effacer les filtres</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
             renderItem={({ item }) => (

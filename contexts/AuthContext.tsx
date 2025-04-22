@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store";
+import * as Crypto from 'expo-crypto';
 import { useRouter, useSegments } from "expo-router";
 import {
     createContext,
@@ -56,48 +57,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         checkAndRedirect();
     }, [checkAndRedirect]);
 
-    useEffect(() => {
-        const loadToken = async () => {
-            try {
-                const token = await SecureStore.getItemAsync(SECURE_TOKEN_KEY);
-                const userData = await SecureStore.getItemAsync(SECURE_USER_DATA_KEY);
-
-                setUserToken(token);
-
-                if (userData) {
-                    try {
-                        const userInfo = JSON.parse(userData);
-                        if (userInfo && userInfo.id && userInfo.email) {
-                            setUser(userInfo);
-                        }
-                        else {
-                            console.error("Données utilisateur invalides:", userInfo);
-                            await signOut();
-                        }
-                    } catch (error) {
-                        console.error("Erreur de parsing des données utilisateur:", error);
-                        await signOut();
-                    }
-                }
-            } catch (error) {
-                console.error("Erreur lors du chargement des données:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        loadToken();
-    }, []);
-
     const signIn = async (token: string, userData: User) => {
         try {
-            // Stockage sécurisé des informations
+            const userDataString = JSON.stringify(userData);
             await SecureStore.setItemAsync(SECURE_TOKEN_KEY, token);
-            await SecureStore.setItemAsync(SECURE_USER_DATA_KEY, JSON.stringify(userData));
+            await SecureStore.setItemAsync(SECURE_USER_DATA_KEY, userDataString);
             setUserToken(token);
             setUser(userData);
         } catch (error) {
-            console.error("Erreur lors de la connexion:", error);
+            console.error("Error signing in:", error);
         }
     };
 
@@ -108,11 +76,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUserToken(null);
             setUser(null);
         } catch (error) {
-            console.error("Erreur lors de la déconnexion:", error);
-        } finally {
-            setIsLoading(false);
+            console.error("Error signing out:", error);
         }
     };
+
+    useEffect(() => {
+        const loadToken = async () => {
+            setIsLoading(true);
+            try {
+                const token = await SecureStore.getItemAsync(SECURE_TOKEN_KEY);
+                const userData = await SecureStore.getItemAsync(SECURE_USER_DATA_KEY);
+
+                setUserToken(token);
+
+                if (userData) {
+                    try {
+                        const hash = await Crypto.digestStringAsync(
+                            Crypto.CryptoDigestAlgorithm.SHA256,
+                            userData
+                        );
+                        const userInfo = JSON.parse(userData);
+                        if (userInfo && userInfo.id && userInfo.email) {
+                            setUser(userInfo);
+                        } else {
+                            console.error("Invalid user data:", userInfo);
+                            await signOut();
+                        }
+                    } catch (error) {
+                        console.error("Error parsing user data:", error);
+                        await signOut();
+                    }
+                }
+            } catch (error) {
+                console.error("Error loading data:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadToken();
+    }, []);
 
     return (
         <AuthContext.Provider

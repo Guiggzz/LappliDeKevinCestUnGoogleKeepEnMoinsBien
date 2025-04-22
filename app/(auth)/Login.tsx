@@ -5,8 +5,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import tw from "twrnc";
 import { Ionicons } from "@expo/vector-icons";
+import * as Crypto from "expo-crypto";
+import { API } from "@/constants/config";
 
-const apiUrl = "https://keep.kevindupas.com/api";
 
 export default function LoginScreen() {
     const [email, setEmail] = useState("");
@@ -18,17 +19,17 @@ export default function LoginScreen() {
 
     const handleLogin = async () => {
         if (!email || !password) {
-            Alert.alert("Erreur", "Veuillez remplir tous les champs");
+            Alert.alert("Error", "Please fill in all fields");
             return;
         }
 
         setLoading(true);
-        setDebug("Démarre la connexion...");
+        setDebug("Starting login...");
 
         try {
-            setDebug((prev) => prev + `\nURL de l'API: ${apiUrl}/login`);
+            setDebug((prev) => prev + `\nAPI URL: ${API.LOGIN}`);
 
-            const response = await fetch(`${apiUrl}/login`, {
+            const response = await fetch(`${API.LOGIN}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -39,26 +40,26 @@ export default function LoginScreen() {
 
             const rawText = await response.text();
             setDebug(
-                (prev) => prev + `\nRéponse brute: ${rawText.substring(0, 50)}...`
+                (prev) => prev + `\nRaw response: ${rawText.substring(0, 50)}...`
             );
 
             let data;
             try {
                 data = JSON.parse(rawText);
-                setDebug((prev) => prev + `\nRéponse parsé avec succès`);
+                setDebug((prev) => prev + `\nParsed response successfully`);
             } catch (error) {
-                setDebug((prev) => prev + `\nErreur: ${(error as Error).message}`);
+                setDebug((prev) => prev + `\nError: ${(error as Error).message}`);
                 setLoading(false);
                 return;
             }
 
-            setDebug((prev) => prev + `\nConnexion réussie`);
+            setDebug((prev) => prev + `\nLogin successful`);
 
             await signIn(data.access_token, data.user);
         } catch (error) {
-            setDebug((prev) => prev + `\nErreur: ${(error as Error).message}`);
+            setDebug((prev) => prev + `\nError: ${(error as Error).message}`);
             setLoading(false);
-            Alert.alert("Erreur de connexion", "Impossible de se connecter. Veuillez vérifier vos identifiants.");
+            Alert.alert("Login Error", "Unable to connect. Please check your credentials.");
         }
     };
 
@@ -74,10 +75,10 @@ export default function LoginScreen() {
                             <Text style={tw`text-blue-800 text-3xl font-bold`}>CACA</Text>
                         </View>
                         <Text style={tw`text-white text-center text-3xl font-bold tracking-wider`}>
-                            L'appli de Kevin c'est un Google Keep en moins bien
+                            Kevin's App is a worse Google Keep
                         </Text>
                         <Text style={tw`text-blue-100 text-base mt-2`}>
-                            Connectez-vous pour continuer
+                            Log in to continue
                         </Text>
                     </View>
 
@@ -88,10 +89,10 @@ export default function LoginScreen() {
                                 <Ionicons name="mail-outline" size={20} color="#E0E0FF" />
                                 <TextInput
                                     style={tw`flex-1 text-white pl-3 font-medium`}
-                                    placeholder="Entrez votre email"
+                                    placeholder="Enter your email"
                                     placeholderTextColor="#A0A0FF"
                                     value={email}
-                                    onChangeText={setEmail}
+                                    onChangeText={(text) => setEmail(text.trim())}
                                     keyboardType="email-address"
                                     autoCapitalize="none"
                                 />
@@ -99,15 +100,15 @@ export default function LoginScreen() {
                         </View>
 
                         <View style={tw`mb-8`}>
-                            <Text style={tw`text-blue-100 text-sm mb-2 ml-1`}>Mot de passe</Text>
+                            <Text style={tw`text-blue-100 text-sm mb-2 ml-1`}>Password</Text>
                             <View style={tw`flex-row items-center bg-white/20 rounded-xl px-4 py-3`}>
                                 <Ionicons name="lock-closed-outline" size={20} color="#E0E0FF" />
                                 <TextInput
                                     style={tw`flex-1 text-white pl-3 font-medium`}
-                                    placeholder="Entrez votre mot de passe"
+                                    placeholder="Enter your password"
                                     placeholderTextColor="#A0A0FF"
                                     value={password}
-                                    onChangeText={setPassword}
+                                    onChangeText={(text) => setPassword(text.trim())}
                                     secureTextEntry={!showPassword}
                                 />
                                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
@@ -129,7 +130,7 @@ export default function LoginScreen() {
                                 <ActivityIndicator color="#ffffff" />
                             ) : (
                                 <Text style={tw`text-white text-center font-bold text-lg`}>
-                                    Se connecter
+                                    Log In
                                 </Text>
                             )}
                         </TouchableOpacity>

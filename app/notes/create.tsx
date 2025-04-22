@@ -6,11 +6,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import tw from "twrnc";
 import { useAuth } from "@/contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
+import { API } from "@/constants/config";
 
-const apiCategories = "https://keep.kevindupas.com/api/categories";
-const apiCreateNote = "https://keep.kevindupas.com/api/notes";
-
-// Couleurs prédéfinies pour les nouvelles catégories
 const CATEGORY_COLORS = [
     "#9C27B0", // Violet
     "#2196F3", // Bleu
@@ -52,7 +49,7 @@ export default function Create() {
 
         setCategoriesLoading(true);
         try {
-            const response = await fetch(apiCategories, {
+            const response = await fetch(API.CATEGORIES, {
                 headers: {
                     "Authorization": `Bearer ${userToken}`,
                     "Content-Type": "application/json"
@@ -85,7 +82,7 @@ export default function Create() {
             // Sélection aléatoire d'une couleur dans notre palette
             const randomColor = CATEGORY_COLORS[Math.floor(Math.random() * CATEGORY_COLORS.length)];
 
-            const response = await fetch(apiCategories, {
+            const response = await fetch(API.NOTES, {
                 method: "POST",
                 headers: {
                     "Authorization": `Bearer ${userToken}`,
@@ -124,7 +121,7 @@ export default function Create() {
 
         setLoading(true);
         try {
-            const response = await fetch(apiCreateNote, {
+            const response = await fetch(API.NOTES, {
                 method: "POST",
                 headers: {
                     "Authorization": `Bearer ${userToken}`,

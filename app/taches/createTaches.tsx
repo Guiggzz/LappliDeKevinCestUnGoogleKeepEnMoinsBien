@@ -6,9 +6,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import tw from "twrnc";
 import { useAuth } from "@/contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
+import { API } from "@/constants/config";
 
-const apiCreateTaches = "https://keep.kevindupas.com/api/tasks";
-const apiNotes = "https://keep.kevindupas.com/api/notes";
 
 interface Notes {
     id: number;
@@ -45,7 +44,7 @@ export default function Create() {
 
         setCategoriesLoading(true);
         try {
-            const response = await fetch(apiNotes, {
+            const response = await fetch(API.TASKS, {
                 headers: {
                     "Authorization": `Bearer ${userToken}`,
                     "Content-Type": "application/json"
@@ -101,7 +100,7 @@ export default function Create() {
 
         setLoading(true);
         try {
-            const response = await fetch(apiCreateTaches, {
+            const response = await fetch(API.TASKS, {
                 method: "POST",
                 headers: {
                     "Authorization": `Bearer ${userToken}`,

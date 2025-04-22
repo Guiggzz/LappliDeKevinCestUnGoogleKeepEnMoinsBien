@@ -6,6 +6,8 @@ import tw from "twrnc";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { router } from "expo-router";
+import * as Crypto from "expo-crypto";
+import { API } from "@/constants/config";
 
 interface Subtask {
   id: number;
@@ -30,7 +32,6 @@ interface Task {
   note: Note;
 }
 
-const apiUrl = "https://keep.kevindupas.com/api/tasks";
 
 export default function Explore() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -47,7 +48,7 @@ export default function Explore() {
     console.log("Fetching tasks...");
 
     if (!userToken) {
-      Alert.alert("Erreur", "Token non disponible.");
+      Alert.alert("Error", "Token not available.");
       return;
     }
 
@@ -55,7 +56,7 @@ export default function Explore() {
 
     setLoading(true);
     try {
-      const response = await fetch(apiUrl, {
+      const response = await fetch(API.TASKS, {
         headers: {
           "Authorization": `Bearer ${userToken}`,
           "Content-Type": "application/json"
@@ -71,7 +72,7 @@ export default function Explore() {
       }
     } catch (error) {
       console.error("Error fetching tasks:", error);
-      Alert.alert("Erreur", "Impossible de récupérer les notes.");
+      Alert.alert("Error", "Unable to fetch tasks.");
     } finally {
       setLoading(false);
     }
@@ -109,16 +110,20 @@ export default function Explore() {
         year: 'numeric'
       });
     } catch (e) {
-      return "Date inconnue";
+      return "Unknown date";
     }
   };
+
+  useEffect(() => {
+    fetchTasks();
+  }, [userToken]);
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <LinearGradient colors={["#0f2027", "#203a43", "#2c5364"]} style={tw`flex-1`}>
         <SafeAreaView style={tw`flex-1 px-6 pt-6`}>
           <View style={tw`flex-row justify-between items-center mb-6`}>
-            <Text style={tw`text-white text-2xl font-bold`}>Mes Tâches</Text>
+            <Text style={tw`text-white text-2xl font-bold`}>My Tasks</Text>
             <View style={tw`flex-row gap-3`}>
               <TouchableOpacity
                 onPress={loading ? undefined : fetchTasks}
@@ -136,9 +141,9 @@ export default function Explore() {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
-                  Alert.alert("Déconnexion", "Voulez-vous vous déconnecter ?", [
-                    { text: "Annuler", style: "cancel" },
-                    { text: "Oui", onPress: signOut }
+                  Alert.alert("Logout", "Do you want to log out?", [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Yes", onPress: signOut }
                   ]);
                 }}
                 style={tw`p-2.5 bg-red-500/70 rounded-full shadow-md`}
@@ -147,8 +152,9 @@ export default function Explore() {
               </TouchableOpacity>
             </View>
           </View>
+
           <TextInput
-            placeholder="Rechercher..."
+            placeholder="Search..."
             placeholderTextColor="#ffffff"
             value={search}
             onChangeText={handleSearch}
@@ -158,19 +164,19 @@ export default function Explore() {
           {loading ? (
             <View style={tw`flex-1 justify-center items-center`}>
               <ActivityIndicator size="large" color="#ffffff" style={tw`mb-4`} />
-              <Text style={tw`text-white/80 text-base`}>Chargement des tâches...</Text>
+              <Text style={tw`text-white/80 text-base`}>Loading tasks...</Text>
             </View>
           ) : filteredTasks.length === 0 ? (
             <View style={tw`flex-1 items-center justify-center`}>
               <Ionicons name="checkbox-outline" size={70} color="rgba(255,255,255,0.2)" />
               <Text style={tw`text-white text-lg font-medium mt-4 mb-2`}>
-                {search ? "Aucune tâche trouvée" : "Aucune tâche disponible"}
+                {search ? "No tasks found" : "No tasks available"}
               </Text>
               <TouchableOpacity
                 onPress={fetchTasks}
                 style={tw`mt-2 px-6 py-3 bg-blue-500 rounded-full shadow-lg`}
               >
-                <Text style={tw`text-white font-medium`}>Rafraîchir</Text>
+                <Text style={tw`text-white font-medium`}>Refresh</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -198,49 +204,27 @@ export default function Explore() {
                     )}
                     <Text style={tw`text-blue-100 text-base mb-3`}>{item.description}</Text>
 
-                    <View style={tw`flex-row justify-between items-center mb-3`}>
-                      <View style={tw`${item.is_completed ? 'bg-green-500/40' : 'bg-blue-500/40'} px-3 py-1 rounded-full`}>
-                        <Text style={tw`text-white text-xs font-medium`}>
-                          {item.is_completed ? "Terminé" : "En cours"}
-                        </Text>
-                      </View>
-                      <Text style={tw`text-blue-200 text-sm`}>
-                        {formatDate(item.created_at)}
+                    <View style={tw`flex-row justify-between items-center mt-2`}>
+                      <Text style={tw`text-gray-300 text-xs`}>
+                        Updated: {formatDate(item.updated_at)}
                       </Text>
-                    </View>
-
-                    {item.subtasks && item.subtasks.length > 0 && (
-                      <View style={tw`mt-1 p-3 bg-white/5 rounded-lg border border-white/5`}>
-                        <Text style={tw`text-blue-200 text-sm mb-2 font-medium`}>Sous-tâches:</Text>
-                        {item.subtasks.map((subtask, subtaskIndex) => (
-                          <View
-                            key={`task-${item.id}-subtask-${subtask.id || subtaskIndex}`}
-                            style={tw`flex-row items-center mb-2`}
-                          >
-                            <Ionicons
-                              name={subtask.is_completed ? "checkmark-circle" : "ellipse-outline"}
-                              size={18}
-                              color={subtask.is_completed ? "#8cf1b4" : "#a0c4ff"}
-                            />
-                            <Text style={tw`text-blue-100 text-sm ml-2 ${subtask.is_completed ? 'opacity-70' : ''}`}>
-                              {subtask.description}
-                            </Text>
-                          </View>
-                        ))}
+                      <View style={tw`flex-row items-center`}>
+                        {item.subtasks && item.subtasks.length > 0 && (
+                          <Text style={tw`text-gray-300 text-xs mr-2`}>
+                            {item.subtasks.filter(st => st.is_completed).length}/{item.subtasks.length} subtasks
+                          </Text>
+                        )}
+                        <View
+                          style={tw`h-3 w-3 rounded-full ${item.is_completed ? "bg-green-500" : "bg-yellow-500"
+                            }`}
+                        />
                       </View>
-                    )}
+                    </View>
                   </View>
                 </TouchableOpacity>
               )}
             />
           )}
-
-          <TouchableOpacity
-            onPress={goToAddTask}
-            style={tw`absolute right-6 bottom-25 bg-blue-500 rounded-full p-4 shadow-lg`}
-          >
-            <Ionicons name="add" size={30} color="white" />
-          </TouchableOpacity>
         </SafeAreaView>
       </LinearGradient>
     </TouchableWithoutFeedback>

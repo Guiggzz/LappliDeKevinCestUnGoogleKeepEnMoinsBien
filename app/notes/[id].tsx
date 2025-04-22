@@ -6,20 +6,17 @@ import tw from "twrnc";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { router, useLocalSearchParams } from "expo-router";
+import { API } from "@/constants/config";
 
-const apiUrl = "https://keep.kevindupas.com/api/notes";
-const apiCategories = "https://keep.kevindupas.com/api/categories";
-
-// Couleurs prédéfinies pour les nouvelles catégories
 const CATEGORY_COLORS = [
-    "#9C27B0", // Violet
-    "#2196F3", // Bleu
-    "#4CAF50", // Vert
-    "#FF9800", // Orange
-    "#E91E63", // Rose
-    "#607D8B", // Bleu-gris
-    "#F44336", // Rouge
-    "#009688"  // Sarcelle
+    "#9C27B0",
+    "#2196F3",
+    "#4CAF50",
+    "#FF9800",
+    "#E91E63",
+    "#607D8B",
+    "#F44336",
+    "#009688"
 ];
 
 interface Category {
@@ -65,7 +62,7 @@ export default function NoteDetails() {
         if (!userToken || !id) return;
 
         try {
-            const response = await fetch(`${apiUrl}/${id}`, {
+            const response = await fetch(`${API.NOTES}/${id}`, {
                 headers: {
                     "Authorization": `Bearer ${userToken}`,
                     "Content-Type": "application/json"
@@ -98,7 +95,7 @@ export default function NoteDetails() {
 
         setCategoriesLoading(true);
         try {
-            const response = await fetch(apiCategories, {
+            const response = await fetch(API.NOTES, {
                 headers: {
                     "Authorization": `Bearer ${userToken}`,
                     "Content-Type": "application/json"
@@ -130,7 +127,7 @@ export default function NoteDetails() {
             // Sélection aléatoire d'une couleur dans notre palette
             const randomColor = CATEGORY_COLORS[Math.floor(Math.random() * CATEGORY_COLORS.length)];
 
-            const response = await fetch(apiCategories, {
+            const response = await fetch(API.NOTES, {
                 method: "POST",
                 headers: {
                     "Authorization": `Bearer ${userToken}`,
@@ -164,7 +161,7 @@ export default function NoteDetails() {
 
         setIsSaving(true);
         try {
-            const response = await fetch(`${apiUrl}/${id}`, {
+            const response = await fetch(`${API.NOTES}/${id}`, {
                 method: "PUT",
                 headers: {
                     "Authorization": `Bearer ${userToken}`,
@@ -200,7 +197,7 @@ export default function NoteDetails() {
                     style: "destructive",
                     onPress: async () => {
                         try {
-                            await fetch(`${apiUrl}/${id}`, {
+                            await fetch(`${API.NOTES}/${id}`, {
                                 method: "DELETE",
                                 headers: {
                                     "Authorization": `Bearer ${userToken}`,
